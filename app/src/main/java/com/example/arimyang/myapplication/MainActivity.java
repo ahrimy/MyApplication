@@ -4,45 +4,122 @@ package com.example.arimyang.myapplication;
 import android.app.Activity;
 import android.os.Bundle;
 import android.widget.RelativeLayout;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.location.Location;
+import android.support.v7.app.AppCompatActivity;
+import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import com.skp.Tmap.TMapMarkerItem;
 import com.skp.Tmap.TMapPoint;
 import com.skp.Tmap.TMapView;
+import com.skp.Tmap.TMapGpsManager;
 
-public class MainActivity extends Activity {
+import java.util.ArrayList;
 
-    private final String TMAP_API_KEY = "cbe6c66f-2b57-3ee7-a174-ed80856248ae";
-    private TMapView tmap;
+import static com.skp.Tmap.MapUtils.mApiKey;
 
+public class MainActivity extends AppCompatActivity implements TMapGpsManager.onLocationChangedCallback {
+
+    private Context mContext = null;
+    private boolean m_bTrackingMode = true;
+    private TMapGpsManager tmapgps = null;
+    private TMapView tmapview = null;
+
+    private static String mApikey = "cbe6c66f-2b57-3ee7-a174-ed80856248ae";
+    private static int mMarkerID;
+
+    private ArrayList<TMapPoint> m_tmapPoint = new ArrayList<TMapPoint>();
+    private ArrayList<String> mArrayMarkerID = new ArrayList<String>();
+    private ArrayList<MapPoint> m_mapPoint = new ArrayList<MapPoint>();
+
+    @Override
+    public void onLocationChange(Location location){
+        if(m_bTrackingMode){
+            tmapview.setLocationPoint(location.getLongitude(),location.getLatitude());
+        }
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        initTmap();
+        mContext = this;
+
+        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.mapview);
+        tmapview = new TMapView(this);
+        linearLayout.addView(tmapview);
+        tmapview.setSKPMapApiKey(mApiKey);
+
+        addPoint();
+        showMarkerPoint();
+
+        //현재보는방향
+        tmapview.setCompassMode(true);
+
+        //현위치 아이콘표시
+        tmapview.setIconVisibility(true);
+
+        //줌레벨
+        tmapview.setZoomLevel(15);
+        tmapview.setMapType(TMapView.MAPTYPE_STANDARD);
+        tmapview.setLanguage(TMapView.LANGUAGE_KOREAN);
+
+        tmapgps = new TMapGpsManager(MainActivity.this);
+        tmapgps.setMinTime(1000);
+        tmapgps.setMinDistance(5);
+        tmapgps.setProvider(tmapgps.NETWORK_PROVIDER);
+
+        tmapgps.OpenGps();
+
+        //화면중심을 단말의 현재위치로 이동
+        tmapview.setTrackingMode(true);
+        tmapview.setSightVisible(true);
+
+        tmapview.setOnCalloutRightButtonClickListener(new TMapView.OnCalloutRightButtonClickCallback(){
+            @Override
+            public void onCalloutRightButton(TMapMarkerItem markerItem){
+                Toast.makeText(MainActivity.this,"클릭",Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    private void initTmap() {
-        tmap = new TMapView(this);
-        tmap.setSKPMapApiKey(TMAP_API_KEY);
-        RelativeLayout layout = (RelativeLayout) findViewById(R.id.main_layout_tmap);
 
-        double lat = 37.5025595;
-        double lng = 126.8423617;
-        tmap.setCenterPoint(lng, lat);
-        tmap.setZoomLevel(15);
-
-        layout.addView(tmap);
-
-        addMarker();
+    public void addPoint(){
+        //강남
+        m_mapPoint.add(new MapPoint("강남",37.510350,127.066847));
     }
-    private void addMarker() {
-        double lat = 37.5025595;
-        double lng = 126.8423617;
 
-        TMapPoint point = new TMapPoint(lat,lng);
-        TMapMarkerItem marker = new TMapMarkerItem();
-        marker.setTMapPoint(point);
-        tmap.addMarkerItem("marker",marker);
+    public void showMarkerPoint(){
+        for(int i =0;i<m_mapPoint.size();i++){
+            TMapPoint point = new TMapPoint(m_mapPoint.get(i).getLatitude(),m_mapPoint.get(i).getLongitude());
+            TMapMarkerItem item1 = new TMapMarkerItem();
+            Bitmap bitmap = null;
+            bitmap = BitmapFactory.decodeResource(mContext.getResources(),R.mipmap.poi_dot);
+
+            item1.setTMapPoint(point);
+            item1.setName(m_mapPoint.get(i).getName());
+            item1.setVisible(item1.VISIBLE);
+
+            item1.setIcon(bitmap);
+
+            bitmap = BitmapFactory.decodeResource(mContext.getResources(),R.mipmap.poi_dot);
+
+            item1.setCalloutTitle(m_mapPoint.get(i).getName());
+            item1.setCalloutSubTitle("서울");
+            item1.setCanShowCallout(true);
+            item1.setAutoCalloutVisible(true);
+
+            Bitmap bitmap_i = BitmapFactory.decodeResource(mContext.getResources(),R.mipmap.i_go);
+
+            item1.setCalloutRightButtonImage(bitmap_i);
+
+            String strID = String.format("pmarker%d",mMarkerID++);
+
+            tmapview.addMarkerItem(strID,item1);
+            mArrayMarkerID.add(strID);
+        }
     }
 }
